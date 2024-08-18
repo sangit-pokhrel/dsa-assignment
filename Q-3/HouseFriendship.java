@@ -1,3 +1,4 @@
+// Import the java.util package for using lists, maps, sets, etc.
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,101 +11,99 @@ public class HouseFriendship {
 
     // Union-Find class to manage groups of connected houses
     static class DisjointSet {
-        private int[] parent;  // Array to track the parent of each node
-        private int[] rank;    // Array to track the rank (height) of each tree in the disjoint set
+        private int[] parent;  // Array to store the parent of each node (house)
+        private int[] rank;    // Array to store the rank (depth) of each tree
 
-        // Constructor to initialize the disjoint set with 'size' elements
+        // Constructor to initialize the Union-Find data structure
         public DisjointSet(int size) {
-            parent = new int[size];  // Initialize parent array
-            rank = new int[size];    // Initialize rank array
-            for (int i = 0; i < size; i++) {
-                parent[i] = i;       // Each element is its own parent initially
-                rank[i] = 1;         // Each tree has a rank of 1 initially
+            parent = new int[size];  // Initialize the parent array with the size of houses
+            rank = new int[size];    // Initialize the rank array with the size of houses
+            for (int i = 0; i < size; i++) {  // Loop through each house
+                parent[i] = i;  // Set each house as its own parent (initially, each house is its own group)
+                rank[i] = 1;    // Set the initial rank of each house to 1
             }
         }
 
-        // Find the root of the set containing 'node'
+        // Method to find the root of the set containing 'node'
         public int find(int node) {
-            if (parent[node] != node) {              // If the node is not its own parent
-                parent[node] = find(parent[node]);   // Path compression: set the parent of the node to its root
+            if (parent[node] != node) {  // If the node is not its own parent, it means it's not the root
+                parent[node] = find(parent[node]); // Recursively find the root and apply path compression
             }
-            return parent[node];                     // Return the root of the set
+            return parent[node];  // Return the root of the node
         }
 
-        // Union two sets containing 'node1' and 'node2'
+        // Method to union (merge) two sets containing 'node1' and 'node2'
         public void union(int node1, int node2) {
-            int root1 = find(node1);  // Find the root of the set containing 'node1'
-            int root2 = find(node2);  // Find the root of the set containing 'node2'
-            if (root1 != root2) {     // If they are in different sets, union them
-                if (rank[root1] > rank[root2]) {       // If root1's tree is taller, attach root2's tree under root1
+            int root1 = find(node1);  // Find the root of node1
+            int root2 = find(node2);  // Find the root of node2
+            if (root1 != root2) {  // If they are not in the same set, merge them
+                if (rank[root1] > rank[root2]) {  // If root1 has a higher rank, make root1 the parent of root2
                     parent[root2] = root1;
-                } else if (rank[root1] < rank[root2]) { // If root2's tree is taller, attach root1's tree under root2
+                } else if (rank[root1] < rank[root2]) {  // If root2 has a higher rank, make root2 the parent of root1
                     parent[root1] = root2;
-                } else {                                // If both trees have the same height, attach root2 under root1
+                } else {  // If they have the same rank, choose one as the parent and increment its rank
                     parent[root2] = root1;
-                    rank[root1]++;                      // Increase the rank of root1's tree
+                    rank[root1]++;
                 }
             }
         }
     }
 
+    // Method to evaluate friend requests based on restrictions and the current friendship network
     public static List<String> evaluateRequests(int numHouses, int[][] restrictions, int[][] requests) {
-        // Initialize a DisjointSet to manage connected components of houses
-        DisjointSet ds = new DisjointSet(numHouses);
+        DisjointSet ds = new DisjointSet(numHouses);  // Create a Union-Find structure for the houses
 
-        // Setup restrictions: Union the houses that have restrictions
+        // Loop through each restriction to union the restricted houses
         for (int[] restriction : restrictions) {
-            ds.union(restriction[0], restriction[1]);
+            ds.union(restriction[0], restriction[1]);  // Union the two restricted houses
         }
 
         // Create a map to track restricted pairs
         Map<Integer, Set<Integer>> restrictionMap = new HashMap<>();
         for (int[] restriction : restrictions) {
-            // Add each restricted pair to the map
+            // Add each restriction to the map for quick lookup
             restrictionMap.computeIfAbsent(restriction[0], k -> new HashSet<>()).add(restriction[1]);
             restrictionMap.computeIfAbsent(restriction[1], k -> new HashSet<>()).add(restriction[0]);
         }
 
-        // List to store the results of each request
-        List<String> result = new ArrayList<>();
+        List<String> result = new ArrayList<>();  // List to store the results of the friend requests
 
-        // Evaluate each friend request
+        // Loop through each friend request
         for (int[] request : requests) {
-            int houseA = request[0];  // Get the first house in the request
-            int houseB = request[1];  // Get the second house in the request
+            int houseA = request[0];  // Extract the first house in the request
+            int houseB = request[1];  // Extract the second house in the request
 
-            if (ds.find(houseA) == ds.find(houseB)) {  // Check if both houses are in the same group
-                boolean canBeFriends = true;  // Flag to determine if the request can be approved
+            if (ds.find(houseA) == ds.find(houseB)) {  // If both houses are in the same group
+                boolean canBeFriends = true;  // Assume the request can be approved
 
-                // Check if adding this friendship would violate any restrictions
+                // Check all houses connected to houseA for any indirect restriction
                 for (int restrictedHouse : restrictionMap.getOrDefault(houseA, Collections.emptySet())) {
-                    if (ds.find(restrictedHouse) == ds.find(houseB)) {  // If restricted house is in the same group as houseB
-                        canBeFriends = false;  // Friendship request is denied
-                        break;
+                    if (ds.find(restrictedHouse) == ds.find(houseB)) {  // If houseB is connected to a restricted house
+                        canBeFriends = false;  // The request must be denied
+                        break;  // Exit the loop as the request cannot be approved
                     }
                 }
-                result.add(canBeFriends ? "approved" : "denied");  // Add the result based on the flag
-            } else {
-                // Houses are not in the same group, so the request is approved
+                result.add(canBeFriends ? "approved" : "denied");  // Add the result of the request to the list
+            } else {  // If houses are not in the same group, the request can be approved
                 result.add("approved");
                 ds.union(houseA, houseB);  // Union the two houses to connect them
             }
         }
 
-        return result;  // Return the list of results for all requests
+        return result;  // Return the list of results for all friend requests
     }
 
     public static void main(String[] args) {
         // Example 1
-        int numHouses1 = 3;
-        int[][] restrictions1 = {{0, 1}};
-        int[][] requests1 = {{0, 2}, {2, 1}};
+        int numHouses1 = 3;  // Number of houses
+        int[][] restrictions1 = {{0, 1}};  // Restriction list
+        int[][] requests1 = {{0, 2}, {2, 1}};  // Friend request list
         System.out.println(evaluateRequests(numHouses1, restrictions1, requests1)); // Output: [approved, denied]
 
         // Example 2
-        int numHouses2 = 5;
-        int[][] restrictions2 = {{0, 1}, {1, 2}, {2, 3}};
-        int[][] requests2 = {{0, 4}, {1, 2}, {3, 1}, {3, 4}};
+        int numHouses2 = 5;  // Number of houses
+        int[][] restrictions2 = {{0, 1}, {1, 2}, {2, 3}};  // Restriction list
+        int[][] requests2 = {{0, 4}, {1, 2}, {3, 1}, {3, 4}};  // Friend request list
         System.out.println(evaluateRequests(numHouses2, restrictions2, requests2)); // Output: [approved, denied, approved, denied]
     }
 }
