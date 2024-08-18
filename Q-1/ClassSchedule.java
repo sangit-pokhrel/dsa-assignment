@@ -1,4 +1,6 @@
-import java.util.*; // Import all utility classes including ArrayList, PriorityQueue, etc.
+// Import all utility classes including ArrayList, PriorityQueue, etc.
+import java.util.Arrays;
+import java.util.PriorityQueue;
 
 class ClassSchedule {
     // Method to find the most used classroom

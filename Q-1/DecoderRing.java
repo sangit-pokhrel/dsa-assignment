@@ -35,10 +35,5 @@ public class DecoderRing {
         String s1 = "hello";
         int[][] shifts1 = {{0, 1, 1}, {2, 3, 0}, {0, 2, 1}};
         System.out.println(decipherMessage(s1, shifts1));  // Output: jglko
-
-        // Additional test case
-        String s2 = "abcdef";
-        int[][] shifts2 = {{0, 2, 1}, {1, 4, 0}, {0, 5, 1}};
-        System.out.println(decipherMessage(s2, shifts2));  // Output: cdbdaf
     }
 }
