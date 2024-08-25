@@ -5,7 +5,6 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Stack;
-
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -13,125 +12,138 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 public class BasicCalculatorGUI extends JFrame {
-    private JTextField inputField;          // Input field for user to enter the expression
-    private JButton calculateButton;        // Button to trigger the calculation
-    private JLabel resultLabel;             // Label to display the result of the calculation
+    private JTextField inputField;
+    private JButton calculateButton;
+    private JTextField resultField;
 
     public BasicCalculatorGUI() {
-        // Set up the frame
-        setTitle("Basic Calculator");       // Set the title of the window
-        setSize(400, 300);                  // Set the size of the window (width x height)
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Close application when the window is closed
-        setLocationRelativeTo(null);        // Center the window on the screen
-        setLayout(new BorderLayout(10, 10)); // Use BorderLayout with padding between components
+        setTitle("Calculator");
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+
+        // Set a clean look and feel
+        try {
+            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Header Label
-        JLabel headerLabel = new JLabel("Basic Calculator", JLabel.CENTER); // Label to display header text centered
-        headerLabel.setFont(new Font("Arial", Font.BOLD, 24)); // Set font for header label
-        add(headerLabel, BorderLayout.NORTH); // Add header label to the top (NORTH) of the layout
+        JLabel headerLabel = new JLabel("Calculator", JLabel.CENTER);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        add(headerLabel, BorderLayout.NORTH);
 
-        // Panel for Input and Button
-        JPanel panel = new JPanel();         // Create a panel to hold input field and button
-        panel.setLayout(new GridLayout(2, 1, 10, 10)); // Use GridLayout with 2 rows, 1 column, and padding
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add empty border (padding) around panel
+        // Main Panel
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(4, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Input field
-        inputField = new JTextField();       // Create text field for user input
-        inputField.setFont(new Font("Arial", Font.PLAIN, 18)); // Set font for input field
-        inputField.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2)); // Set border color and thickness for input field
-        panel.add(inputField);               // Add input field to the panel
+        // Input Label and Field
+        JLabel inputLabel = new JLabel("Input", JLabel.LEFT);
+        inputLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        panel.add(inputLabel);
 
-        // Calculate button
-        calculateButton = new JButton("Calculate"); // Create button with "Calculate" label
-        calculateButton.setFont(new Font("Arial", Font.BOLD, 18)); // Set font for button text
-        calculateButton.setBackground(Color.LIGHT_GRAY); // Set background color of button
-        calculateButton.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2)); // Set border color and thickness for button
-        calculateButton.addActionListener(new CalculateButtonListener()); // Add action listener to handle button click
-        panel.add(calculateButton);          // Add button to the panel
+        inputField = new JTextField();
+        inputField.setFont(new Font("Arial", Font.PLAIN, 18));
+        inputField.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2));
+        inputField.setHorizontalAlignment(JTextField.CENTER);
+        panel.add(inputField);
 
-        add(panel, BorderLayout.CENTER);     // Add panel to the center of the layout
+        // Calculate Button
+        calculateButton = new JButton("Calculate");
+        calculateButton.setFont(new Font("Arial", Font.BOLD, 18));
+        calculateButton.setBackground(Color.BLACK);
+        calculateButton.setForeground(Color.WHITE);
+        calculateButton.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2));
+        calculateButton.addActionListener(new CalculateButtonListener());
+        panel.add(calculateButton);
 
-        // Result label
-        resultLabel = new JLabel("Result: ", JLabel.CENTER); // Create label to display results centered
-        resultLabel.setFont(new Font("Arial", Font.PLAIN, 18)); // Set font for result label
-        resultLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add empty border (padding) around result label
-        add(resultLabel, BorderLayout.SOUTH); // Add result label to the bottom (SOUTH) of the layout
+        // Output Label and Field
+        JLabel outputLabel = new JLabel("Output", JLabel.LEFT);
+        outputLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        panel.add(outputLabel);
+
+        resultField = new JTextField();
+        resultField.setFont(new Font("Arial", Font.PLAIN, 18));
+        resultField.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2));
+        resultField.setHorizontalAlignment(JTextField.CENTER);
+        resultField.setEditable(false);
+        panel.add(resultField);
+
+        add(panel, BorderLayout.CENTER);
     }
 
-    // Inner class to handle button click events
     private class CalculateButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            String expression = inputField.getText(); // Get the text (expression) from the input field
+            String expression = inputField.getText();
             try {
-                int result = evaluateExpression(preprocessExpression(expression)); // Evaluate the expression
-                resultLabel.setText("Result: " + result); // Display the result in the result label
+                int result = evaluateExpression(preprocessExpression(expression));
+                resultField.setText(String.valueOf(result));
             } catch (Exception ex) {
-                resultLabel.setText("Error: Invalid expression"); // Display an error message if expression is invalid
+                resultField.setText("Error");
             }
         }
     }
 
-    // Preprocess the expression to handle implicit multiplication (e.g., 2(3) -> 2*(3))
     private String preprocessExpression(String expression) {
-        StringBuilder sb = new StringBuilder(); // Use StringBuilder to build the processed expression
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < expression.length(); i++) {
-            char c = expression.charAt(i); // Get the current character in the expression
-            sb.append(c); // Append the current character to the StringBuilder
-
-            // If the current character is a digit or closing parenthesis, and the next character is an opening parenthesis
+            char c = expression.charAt(i);
+            sb.append(c);
             if (c == ')' || Character.isDigit(c)) {
                 if (i + 1 < expression.length() && expression.charAt(i + 1) == '(') {
-                    sb.append('*'); // Add an asterisk (*) to handle implicit multiplication
+                    sb.append('*');
                 }
             }
         }
-        return sb.toString(); // Return the processed expression as a string
+        return sb.toString();
     }
 
-    // Evaluate the mathematical expression
     private int evaluateExpression(String expression) throws Exception {
-        Stack<Integer> values = new Stack<>(); // Stack to store integer values
-        Stack<Character> ops = new Stack<>(); // Stack to store operators
+        Stack<Integer> values = new Stack<>();
+        Stack<Character> ops = new Stack<>();
         for (int i = 0; i < expression.length(); i++) {
-            char c = expression.charAt(i); // Get the current character in the expression
+            char c = expression.charAt(i);
 
-            if (c == ' ') // Skip spaces
+            if (c == ' ')
                 continue;
 
-            if (Character.isDigit(c)) { // If the character is a digit, form the full number
+            if (Character.isDigit(c)) {
                 int num = 0;
                 while (i < expression.length() && Character.isDigit(expression.charAt(i))) {
-                    num = num * 10 + (expression.charAt(i) - '0'); // Build the full number from digits
+                    num = num * 10 + (expression.charAt(i) - '0');
                     i++;
                 }
-                values.push(num); // Push the number to the values stack
-                i--; // Adjust index to account for the last increment in the while loop
-            } else if (c == '(') { // If the character is an opening parenthesis
-                ops.push(c); // Push the opening parenthesis to the ops stack
-            } else if (c == ')') { // If the character is a closing parenthesis
-                while (ops.peek() != '(') { // Evaluate the expression inside the parentheses
-                    values.push(applyOp(ops.pop(), values.pop(), values.pop())); // Apply the operator to the top two values
+                values.push(num);
+                i--;
+            } else if (c == '(') {
+                ops.push(c);
+            } else if (c == ')') {
+                while (ops.peek() != '(') {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
                 }
-                ops.pop(); // Remove the opening parenthesis from the ops stack
-            } else if (c == '+' || c == '-' || c == '*' || c == '/') { // If the character is an operator
+                ops.pop();
+            } else if (c == '+' || c == '-' || c == '*' || c == '/') {
                 while (!ops.isEmpty() && hasPrecedence(c, ops.peek())) {
-                    values.push(applyOp(ops.pop(), values.pop(), values.pop())); // Apply operators with higher or same precedence
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
                 }
-                ops.push(c); // Push the current operator to the ops stack
+                ops.push(c);
             }
         }
 
-        while (!ops.isEmpty()) { // Apply remaining operators to remaining values
+        while (!ops.isEmpty()) {
             values.push(applyOp(ops.pop(), values.pop(), values.pop()));
         }
 
-        return values.pop(); // The top of the values stack contains the result
+        return values.pop();
     }
 
-    // Returns true if 'op2' has higher or same precedence as 'op1'
     private boolean hasPrecedence(char op1, char op2) {
         if (op2 == '(' || op2 == ')')
             return false;
@@ -141,28 +153,26 @@ public class BasicCalculatorGUI extends JFrame {
             return true;
     }
 
-    // Apply an operator 'op' to operands 'a' and 'b'
     private int applyOp(char op, int b, int a) {
         switch (op) {
             case '+':
-                return a + b; // Addition
+                return a + b;
             case '-':
-                return a - b; // Subtraction
+                return a - b;
             case '*':
-                return a * b; // Multiplication
+                return a * b;
             case '/':
                 if (b == 0)
-                    throw new UnsupportedOperationException("Cannot divide by zero"); // Handle division by zero
-                return a / b; // Division
+                    throw new UnsupportedOperationException("Cannot divide by zero");
+                return a / b;
         }
-        return 0; // Default return value (should never be reached)
+        return 0;
     }
 
     public static void main(String[] args) {
-        // Run the GUI in the Event-Dispatching Thread for thread safety
         SwingUtilities.invokeLater(() -> {
-            BasicCalculatorGUI calculator = new BasicCalculatorGUI(); // Create the calculator GUI instance
-            calculator.setVisible(true); // Make the calculator window visible
+            BasicCalculatorGUI calculator = new BasicCalculatorGUI();
+            calculator.setVisible(true);
         });
     }
 }

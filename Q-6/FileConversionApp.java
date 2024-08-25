@@ -1,159 +1,254 @@
-import javax.swing.*; // Import Swing components for the GUI
-import java.awt.*;    // Import AWT components for layout management
-import java.awt.event.ActionEvent; // Import ActionEvent for handling button actions
-import java.awt.event.ActionListener; // Import ActionListener for handling button clicks
-import java.io.File; // Import File for file handling
-import java.util.List; // Import List for managing multiple files
-import java.util.ArrayList; // Import ArrayList for storing files
-import java.util.concurrent.ExecutionException; // Import ExecutionException for handling thread exceptions
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class FileConversionApp {
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
-    // GUI components
-    private JFrame frame; // Main window of the application
-    private JButton selectFilesButton; // Button to select files for conversion
-    private JButton startConversionButton; // Button to start the conversion process
-    private JButton cancelButton; // Button to cancel the conversion
-    private JProgressBar overallProgressBar; // Progress bar for overall conversion progress
-    private JTextArea statusArea; // Text area to display status messages
-    private JFileChooser fileChooser; // File chooser for selecting multiple files
+public class FileConversionApp extends JFrame {
+    private final DefaultListModel<File> fileListModel;
+    private final JList<File> fileList;
+    private final JComboBox<String> conversionTypeComboBox;
+    private final JProgressBar progressBar;
+    private final JLabel statusBar;
+    private final JButton startButton;
+    private final JButton cancelButton;
+    private ExecutorService executorService;
 
-    private List<File> filesToConvert; // List to hold files selected for conversion
-    private FileConversionTask conversionTask; // Task to manage the file conversion process
+    public FileConversionApp() {
+        // Set up the JFrame
+        setTitle("File Conversion App");
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new FileConversionApp().createAndShowGUI());
-    }
+        // File List
+        fileListModel = new DefaultListModel<>();
+        fileList = new JList<>(fileListModel);
+        fileList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        JScrollPane scrollPane = new JScrollPane(fileList);
 
-    private void createAndShowGUI() {
-        frame = new JFrame("File Conversion Tool"); // Create the main application window
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Ensure the application exits on close
-        frame.setSize(600, 400); // Set the size of the main window
+        // Conversion Type ComboBox
+        String[] conversionTypes = {"PDF to DOCX", "Image Resize"};
+        conversionTypeComboBox = new JComboBox<>(conversionTypes);
 
-        // Create and configure the panel for file selection and control buttons
+        // Progress Bar
+        progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+
+        // Status Bar
+        statusBar = new JLabel("Select files and choose a conversion type to begin.");
+
+        // Buttons
+        JButton addButton = new JButton("Add Files");
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addFiles();
+            }
+        });
+
+        startButton = new JButton("Start Conversion");
+        startButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                startConversion();
+            }
+        });
+
+        cancelButton = new JButton("Cancel");
+        cancelButton.setEnabled(false);
+        cancelButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                cancelConversion();
+            }
+        });
+
+        // Layout Setup
         JPanel controlPanel = new JPanel();
-        controlPanel.setLayout(new GridLayout(0, 1)); // Use a vertical layout for buttons and progress bars
+        controlPanel.setLayout(new GridLayout(1, 4));
+        controlPanel.add(addButton);
+        controlPanel.add(conversionTypeComboBox);
+        controlPanel.add(startButton);
+        controlPanel.add(cancelButton);
 
-        // Select Files Button
-        selectFilesButton = new JButton("Select Files"); // Create a button for selecting files
-        selectFilesButton.addActionListener(new SelectFilesButtonListener()); // Add action listener to handle button clicks
-        controlPanel.add(selectFilesButton); // Add the button to the control panel
-
-        // Start Conversion Button
-        startConversionButton = new JButton("Start Conversion"); // Create a button to start the conversion
-        startConversionButton.addActionListener(new StartConversionButtonListener()); // Add action listener
-        controlPanel.add(startConversionButton); // Add the button to the control panel
-
-        // Cancel Button
-        cancelButton = new JButton("Cancel"); // Create a button to cancel the conversion
-        cancelButton.addActionListener(new CancelButtonListener()); // Add action listener
-        controlPanel.add(cancelButton); // Add the button to the control panel
-
-        // Overall Progress Bar
-        overallProgressBar = new JProgressBar(); // Create a progress bar for overall progress
-        overallProgressBar.setStringPainted(true); // Show percentage on the progress bar
-        controlPanel.add(overallProgressBar); // Add the progress bar to the control panel
-
-        // Status Area
-        statusArea = new JTextArea(10, 50); // Create a text area for displaying status messages
-        statusArea.setEditable(false); // Make the text area read-only
-        JScrollPane statusScrollPane = new JScrollPane(statusArea); // Add a scroll pane for the text area
-        controlPanel.add(statusScrollPane); // Add the scroll pane to the control panel
-
-        // Add the control panel to the main frame
-        frame.getContentPane().add(controlPanel, BorderLayout.CENTER); // Add control panel to the center of the frame
-
-        // Initialize the file chooser
-        fileChooser = new JFileChooser(); // Create a file chooser for selecting files
-        fileChooser.setMultiSelectionEnabled(true); // Enable multi-selection
-
-        // Make the frame visible
-        frame.setVisible(true); // Show the main window
+        // Adding components to the JFrame
+        setLayout(new BorderLayout());
+        add(scrollPane, BorderLayout.CENTER);
+        add(controlPanel, BorderLayout.NORTH);
+        add(progressBar, BorderLayout.SOUTH);
+        add(statusBar, BorderLayout.PAGE_END);
     }
 
-    private class SelectFilesButtonListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            // Show the file chooser dialog and retrieve selected files
-            int returnValue = fileChooser.showOpenDialog(frame); // Display file chooser dialog
-            if (returnValue == JFileChooser.APPROVE_OPTION) { // Check if files were selected
-                File[] selectedFiles = fileChooser.getSelectedFiles(); // Get the selected files
-                filesToConvert = new ArrayList<>(List.of(selectedFiles)); // Store the selected files
-                statusArea.append("Selected files:\n"); // Update status area
-                for (File file : filesToConvert) {
-                    statusArea.append(file.getName() + "\n"); // Display selected file names
-                }
-            }
-        }
-    }
-
-    private class StartConversionButtonListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (filesToConvert == null || filesToConvert.isEmpty()) {
-                JOptionPane.showMessageDialog(frame, "No files selected for conversion.", "Error", JOptionPane.ERROR_MESSAGE); // Show error if no files selected
-                return;
-            }
-            // Initialize and start the file conversion task
-            conversionTask = new FileConversionTask(filesToConvert);
-            conversionTask.execute(); // Start the asynchronous task
-        }
-    }
-
-    private class CancelButtonListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (conversionTask != null) {
-                conversionTask.cancel(true); // Cancel the ongoing task
-                statusArea.append("Conversion cancelled.\n"); // Update status area
-            }
-        }
-    }
-
-    // SwingWorker class for performing file conversions asynchronously
-    private class FileConversionTask extends SwingWorker<Void, String> {
-        private final List<File> files; // List of files to be converted
-
-        public FileConversionTask(List<File> files) {
-            this.files = files; // Initialize with files to be converted
-        }
-
-        @Override
-        protected Void doInBackground() throws Exception {
-            int totalFiles = files.size(); // Total number of files
-            int fileCount = 0; // Counter for processed files
-
-            // Iterate over each file and perform conversion
+    private void addFiles() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setMultiSelectionEnabled(true);
+        fileChooser.setFileFilter(new FileNameExtensionFilter("PDF & Images", "pdf", "jpg", "png"));
+        int returnValue = fileChooser.showOpenDialog(this);
+        if (returnValue == JFileChooser.APPROVE_OPTION) {
+            File[] files = fileChooser.getSelectedFiles();
             for (File file : files) {
-                if (isCancelled()) break; // Check if the task is cancelled
-
-                // Simulate file conversion
-                for (int i = 0; i <= 100; i += 10) {
-                    if (isCancelled()) break; // Check if the task is cancelled
-                    Thread.sleep(100); // Simulate processing time
-                    publish(String.format("Converting %s: %d%% complete", file.getName(), i)); // Publish progress update
-                }
-                fileCount++; // Increment file counter
-                setProgress((int) (fileCount / (float) totalFiles * 100)); // Update overall progress
+                fileListModel.addElement(file);
             }
-            return null; // Return null as there's no result to return
+            statusBar.setText("Added " + files.length + " files for conversion.");
+        }
+    }
+
+    private void startConversion() {
+        if (fileListModel.getSize() == 0) {
+            JOptionPane.showMessageDialog(this, "No files selected.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        startButton.setEnabled(false);
+        cancelButton.setEnabled(true);
+        progressBar.setValue(0);
+        executorService = Executors.newFixedThreadPool(4);
+
+        for (int i = 0; i < fileListModel.getSize(); i++) {
+            File file = fileListModel.getElementAt(i);
+            String conversionType = (String) conversionTypeComboBox.getSelectedItem();
+            FileConversionTask task = new FileConversionTask(file, conversionType);
+            executorService.submit(task);
+        }
+
+        executorService.shutdown();
+    }
+
+    private void cancelConversion() {
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
+            statusBar.setText("Conversion canceled.");
+            startButton.setEnabled(true);
+            cancelButton.setEnabled(false);
+        }
+    }
+
+    private class FileConversionTask extends SwingWorker<Void, Integer> {
+        private final File file;
+        private final String conversionType;
+
+        public FileConversionTask(File file, String conversionType) {
+            this.file = file;
+            this.conversionType = conversionType;
         }
 
         @Override
-        protected void process(List<String> chunks) {
-            for (String status : chunks) {
-                statusArea.append(status + "\n"); // Update status area with progress
+        protected Void doInBackground() {
+            int progress = 0;
+            while (progress < 100) {
+                try {
+                    Thread.sleep(100); // Simulate time-consuming conversion
+                    progress += 10; // Increment progress
+                    publish(progress); // Send progress updates to the process method
+                } catch (InterruptedException e) {
+                    return null; // Handle interruption
+                }
             }
+
+            // Simulate conversion completion and save the converted file
+            try {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Save Converted File");
+                fileChooser.setSelectedFile(new File(file.getName().replaceAll("\\.[^.]*$", "") + "-converted." + getExtension()));
+
+                int userSelection = fileChooser.showSaveDialog(FileConversionApp.this);
+                if (userSelection == JFileChooser.APPROVE_OPTION) {
+                    File savedFile = fileChooser.getSelectedFile();
+                    saveDummyFile(savedFile);
+                } else {
+                    cancel(true); // User canceled the save operation
+                    return null;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void process(List<Integer> chunks) {
+            int latestProgress = chunks.get(chunks.size() - 1); // Get the most recent progress
+            progressBar.setValue(latestProgress); // Update the progress bar
+            statusBar.setText("Converting: " + file.getName() + " (" + conversionType + ") " + latestProgress + "%");
         }
 
         @Override
         protected void done() {
-            try {
-                get(); // Retrieve result of the task (if any exception occurred)
-                statusArea.append("All files converted successfully.\n"); // Notify completion
-            } catch (InterruptedException | ExecutionException e) {
-                statusArea.append("Conversion failed: " + e.getMessage() + "\n"); // Handle exceptions
+            if (!isCancelled()) {
+                statusBar.setText("Completed: " + file.getName() + " (" + conversionType + ")");
+            } else {
+                statusBar.setText("Canceled: " + file.getName());
+            }
+
+            if (allTasksCompleted()) { // Check if all files are done
+                startButton.setEnabled(true);
+                cancelButton.setEnabled(false);
+                JOptionPane.showMessageDialog(FileConversionApp.this, "All conversions are completed!");
             }
         }
+
+        private boolean allTasksCompleted() {
+            for (int i = 0; i < fileList.getModel().getSize(); i++) {
+                if (!executorService.isTerminated()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private String getExtension() {
+            switch (conversionType) {
+                case "PDF to DOCX":
+                    return "docx";
+                case "Image Resize":
+                    return "jpg"; // Assuming image resize conversion
+                default:
+                    return "txt"; // Fallback extension
+            }
+        }
+
+        private void saveDummyFile(File file) {
+            try {
+                if (file.createNewFile()) {
+                    statusBar.setText("File saved: " + file.getAbsolutePath());
+                } else {
+                    statusBar.setText("Failed to save the file");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                statusBar.setText("Error saving the file");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                FileConversionApp app = new FileConversionApp();
+                app.setVisible(true);
+            }
+        });
     }
 }
